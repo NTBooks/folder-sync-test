@@ -11,7 +11,7 @@ A simple Node.js application that provides one-way synchronization of a local fo
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v20 or higher)
 - A Pinata account with API credentials
 - IPFS knowledge (basic understanding)
 
@@ -20,8 +20,8 @@ A simple Node.js application that provides one-way synchronization of a local fo
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/folder-sync-to-ipfs.git
-cd folder-sync-to-ipfs
+git clone https://github.com/NTBooks/folder-sync-test.git
+cd folder-sync-test
 ```
 
 2. Install dependencies:
