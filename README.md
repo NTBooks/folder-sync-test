@@ -36,6 +36,9 @@ npm install
 PINATA_JWT=your_pinata_jwt
 WATCH_GROUP=your_pinata_group_id
 WATCH_DIRECTORY=path/to/your/folder
+FILEPORT=3000 # port to serve the folder listener
+DEMOPORT=3001 # port to serve the demo page
+USECRON=true # true or false to use cron to sync the folder
 ```
 
 4. Start the server:
