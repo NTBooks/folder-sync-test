@@ -62,10 +62,11 @@ app.get('/', async (req, res) => {
 });
 
 app.post('/upload', upload.single('file'), async (req, res) => {
-    const tempPath = req.file.path;
-    const targetPath = path.join(WATCH_DIRECTORY, req.file.originalname);
-
     try {
+        const tempPath = req.file.path;
+
+
+        const targetPath = path.join(WATCH_DIRECTORY, req.file.originalname);
         await fs.rename(tempPath, targetPath);
         res.redirect('/');
     } catch (err) {
