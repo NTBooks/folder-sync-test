@@ -45,7 +45,7 @@ const remoteService = {
 
         let hasMoreFiles = true;
         while (hasMoreFiles) {
-            const response = await fetchWithRetry(`https://api.pinata.cloud/data/pinList?groupId=${rootGroup}&status=pinned&pageLimit=${pageLimit}&pageOffset=${pageOffset}`, {
+            const response = await fetchWithRetry(`https://api.pinata.cloud/data/pinList?${rootGroup ? `groupId=${rootGroup}&` : ''}status=pinned&pageLimit=${pageLimit}&pageOffset=${pageOffset}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${process.env.PINATA_JWT}`
@@ -79,6 +79,10 @@ const remoteService = {
             formData.append('pinataOptions', JSON.stringify({
                 cidVersion: 0,
                 groupId: group
+            }));
+        } else {
+            formData.append('pinataOptions', JSON.stringify({
+                cidVersion: 0
             }));
         }
 
@@ -239,17 +243,26 @@ class SyncManager {
             this.isSyncing = true;
             console.log('Starting sync...');
 
-            const remoteGroups = await this.getRemoteGroups();
+            let remoteGroups = await this.getRemoteGroups();
+
+            if (process.env.MANAGED_GROUPS) {
+                const managedGroups = process.env.MANAGED_GROUPS.split(',');
+                remoteGroups = remoteGroups.filter(g => managedGroups.includes(g.name));
+            } else {
+                remoteGroups = [{ name: 'root', id: null }];
+            }
+
             const localFolders = [...new Set(await this.getLocalFolders())];
 
 
-            const [localFiles, remoteFiles] = await Promise.all([
+            let [localFiles, remoteFiles] = await Promise.all([
                 this.getLocalFiles(),
                 (await Promise.all(remoteGroups.map(group => remoteService.listFolder(group.id)))).flat()
             ]);
 
 
 
+            localFiles = localFiles.filter(f => process.env.MANAGED_GROUPS ? process.env.MANAGED_GROUPS.split(',').some(g => f.path.startsWith(g)) : true);
 
 
             const localFileMap = new Map(localFiles.map(f => [f.hash, f]));
@@ -264,16 +277,11 @@ class SyncManager {
                     const fullPath = `${this.watchDir}/${localFile.path}`;
                     const content = await fs.readFile(fullPath);
                     let group = remoteGroups.find(x => x.name === localFolders.find(f => localFile.path.startsWith(f)))?.id;
-                    if (!group) {
+                    if (!group && localFolders.length > 0) {
                         group = (await remoteService.addNewGroup(localFolders.find(f => localFile.path.startsWith(f))))?.groupId;
-                    }
 
-                    if (!group) {
-                        throw new Error('Failed to add new group');
                     }
                     await remoteService.uploadFile(localFile.path, content, group);
-
-
 
                 } else {
                     skipped++;

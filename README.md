@@ -2,6 +2,10 @@
 
 A simple Node.js application that provides one-way synchronization of a local folder to IPFS via Pinata.
 
+## Warning
+
+**Warning:** Configuring this tool incorrectly can result in unpinning all your files from IPFS. It is highly recommended to use this tool on a test account first to ensure that your configuration is correct and to avoid any potential data loss.
+
 ## Features
 
 - Automatic folder monitoring for changes
@@ -16,6 +20,10 @@ A simple Node.js application that provides one-way synchronization of a local fo
 - IPFS knowledge (basic understanding)
 
 ## Installation
+
+## Warning
+
+**Warning:** Configuring this tool incorrectly can result in unpinning all your files from IPFS. It is highly recommended to use this tool on a test account first to ensure that your configuration is correct and to avoid any potential data loss.
 
 1. Clone the repository:
 
@@ -39,6 +47,7 @@ WATCH_DIRECTORY=path/to/your/folder
 FILEPORT=3000 # port to serve the folder listener
 DEMOPORT=3001 # port to serve the demo page
 USECRON=true # true or false to use cron to sync the folder
+MANAGED_GROUPS=DEV,TEST # comma separated list of groups to manage, if not set, files will be queried from all groups
 ```
 
 4. Start the server:
