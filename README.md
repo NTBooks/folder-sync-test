@@ -40,12 +40,12 @@ npm install
 
 ```bash
 PINATA_JWT=your_pinata_jwt
-WATCH_GROUP=your_pinata_group_id
 WATCH_DIRECTORY=path/to/your/folder
+MANAGED_GROUPS=DEV,TEST # comma separated list of groups to manage (subfolders in the watch directory), if not set, files will be queried from all groups
 FILEPORT=3000 # port to serve the folder listener
 DEMOPORT=3001 # port to serve the demo page
 USECRON=true # true or false to use cron to sync the folder
-MANAGED_GROUPS=DEV,TEST # comma separated list of groups to manage, if not set, files will be queried from all groups
+
 ```
 
 4. Start the server:
