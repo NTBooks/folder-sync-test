@@ -75,9 +75,6 @@ const remoteService = {
         formData.append('pinataOptions', JSON.stringify(pinataOptions));
 
         // special case for meta enabled files
-        // check if fileName is a CIDv0
-
-        //fileName.replace('.bin', '').match(/^[a-zA-Z0-9]{56}$/)
         const metaPath = filePath.endsWith('.bin') ? path.join(process.env.WATCH_DIRECTORY, filePath.replace('.bin', '.meta')) : null;
         if (metaPath && fsSync.existsSync(metaPath)) {
             const meta = await fs.readFile(metaPath, 'utf8');
