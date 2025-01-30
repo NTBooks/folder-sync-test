@@ -56,8 +56,9 @@ app.get('/', async (req, res) => {
             <ul>
                 ${files.map(file => `
                     <li style="margin: 10px;">
-                        <form action="/delete/${file}" method="post" style="display:inline;">
+                        <form action="/delete/?filename=${encodeURIComponent(file)}" method="post" style="display:inline;">
                             <button type="submit" style="color: red; background-color: #ffcccc; border: 1px solid red;">
+
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-trash-2">
                                     <polyline points="3 6 5 6 21 6"></polyline>
                                     <path d="M19 6l-2 14H7L5 6"></path>
@@ -104,8 +105,10 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     }
 });
 
-app.post('/delete/:cid', async (req, res) => {
-    const filePath = path.join(WATCH_DIRECTORY, req.params.cid);
+app.post('/delete', async (req, res) => {
+
+    // PITFALL: THIS IS NOT SAFE, IT CAN DELETE ANY FILE
+    const filePath = path.join(WATCH_DIRECTORY, req.query.filename);
 
     try {
         await fs.unlink(filePath);
