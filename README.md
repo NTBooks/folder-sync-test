@@ -65,3 +65,43 @@ This project is not open for contributions but feel free to fork it and use it a
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Future Development Ideas
+
+Here are some ideas for future development to enhance the functionality, performance, and security of the application:
+
+1. **File Caches**:
+
+   - Implement a caching mechanism to store file metadata and hashes locally. This can reduce the number of file system reads and improve performance, especially for large directories.
+   - Use a database or in-memory store like Sqlite to cache file information and reduce redundant processing.
+
+2. **Triggering from Webhooks**:
+
+   - Integrate with webhooks to trigger synchronization events. This can be useful for real-time updates and reducing the need for constant polling.
+   - For example, set up webhooks to listen for file changes from cloud storage services or other external systems.
+
+3. **Optimizations**:
+
+   - Optimize the file reading and processing logic to handle large directories more efficiently.
+   - Implement parallel processing for reading directories and uploading files to IPFS to speed up the synchronization process.
+
+4. **Security Enhancements**:
+
+   - Implement authentication and authorization mechanisms to restrict access to the upload and delete endpoints.
+   - Sanitize all user inputs, including filenames and query parameters, to prevent injection attacks and other security vulnerabilities.
+   - Add rate limiting to prevent abuse of the upload and delete endpoints.
+   - Use HTTPS to encrypt data in transit and ensure secure communication between the client and server.
+
+5. **Error Handling and Logging**:
+
+   - Improve error handling to provide more informative error messages and better user experience.
+   - Implement a logging system to track application events, errors, and user actions for debugging and monitoring purposes.
+
+6. **User Interface Improvements**:
+
+   - Enhance the web interface to provide a more user-friendly experience, including progress indicators for file uploads and deletions.
+   - Add support for drag-and-drop file uploads to make it easier for users to upload files.
+
+7. **Configuration Management**:
+   - Allow dynamic configuration changes without restarting the server. This can be useful for updating environment variables or application settings on the fly.
+   - Provide a web-based admin interface to manage configuration settings and monitor application status.
