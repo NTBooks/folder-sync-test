@@ -4,7 +4,7 @@ A simple Node.js application that provides one-way synchronization of a local fo
 
 ## Warning
 
-**Warning:** Configuring this tool incorrectly can result in unpinning all your files from IPFS. It is highly recommended to use this tool on a test account first to ensure that your configuration is correct and to avoid any potential data loss.
+> **⚠️ Warning:** Configuring this tool incorrectly can result in unpinning all your files from IPFS. It is highly recommended to use this tool on a test account first to ensure that your configuration is correct and to avoid any potential data loss.
 
 ## Features
 
@@ -21,9 +21,7 @@ A simple Node.js application that provides one-way synchronization of a local fo
 
 ## Installation
 
-## Warning
-
-**Warning:** Configuring this tool incorrectly can result in unpinning all your files from IPFS. It is highly recommended to use this tool on a test account first to ensure that your configuration is correct and to avoid any potential data loss.
+Seriously, read the warning above.
 
 1. Clone the repository:
 
