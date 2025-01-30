@@ -175,6 +175,11 @@ const remoteService = {
 };
 
 const calculateFileHash = async (filePath) => {
+
+    if (!fsSync.existsSync(filePath)) {
+        return null;
+    }
+
     const fileContent = await fs.readFile(filePath);
     return await Hash.of(fileContent);
 };
@@ -197,7 +202,9 @@ const getLocalFiles = async (watchDir) => {
                 await readDir(fullPath);
             } else {
                 const hash = await calculateFileHash(fullPath);
-                files.push({ path: relativePath, hash });
+                if (hash) {
+                    files.push({ path: relativePath, hash });
+                }
             }
         }
     };
