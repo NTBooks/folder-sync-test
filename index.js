@@ -301,7 +301,7 @@ app.listen(PORT, () => {
 
 if (process.env.USECRON) {
     const cron = require('node-cron');
-    cron.schedule('*/30 * * * * *', () => {
+    cron.schedule('*/10 * * * *', () => {
         console.log('Running scheduled sync');
         sync(watchDir);
     });
