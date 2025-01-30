@@ -9,8 +9,8 @@ const Hash = require('ipfs-only-hash');
 const app = express();
 app.use(express.json());
 
-if (!process.env.PINATA_JWT || !process.env.WATCH_GROUP || !process.env.WATCH_DIRECTORY) {
-    console.error('Missing required environment variables: PINATA_JWT, WATCH_GROUP, WATCH_DIRECTORY');
+if (!process.env.PINATA_JWT || !process.env.WATCH_DIRECTORY) {
+    console.error('Missing required environment variables: PINATA_JWT, WATCH_DIRECTORY');
     process.exit(1);
 }
 
@@ -37,36 +37,56 @@ async function fetchWithRetry(url, options, retries = 3) {
 
 
 const remoteService = {
-    async listFolder() {
-        const response = await fetchWithRetry(`https://api.pinata.cloud/data/pinList?groupId=${process.env.WATCH_GROUP}&status=pinned&pageLimit=1000`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${process.env.PINATA_JWT}`
-            }
-        });
-        const data = await response.json();
-        return data.rows?.filter(file =>
+    async listFolder(rootGroup) {
+        let allFiles = [];
+        let pageOffset = 0;
+        let data;
+        let pageLimit = 1000;
+
+        let hasMoreFiles = true;
+        while (hasMoreFiles) {
+            const response = await fetchWithRetry(`https://api.pinata.cloud/data/pinList?groupId=${rootGroup}&status=pinned&pageLimit=${pageLimit}&pageOffset=${pageOffset}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${process.env.PINATA_JWT}`
+                }
+            });
+            data = await response.json();
+            allFiles = allFiles.concat(data.rows);
+            pageOffset += pageLimit;
+            hasMoreFiles = data.rows.length === pageLimit;
+        }
+
+        return allFiles.filter(file =>
             // filter out files that are not in the watch directory but were uploaded manually to pinata
-            file.metadata.keyvalues?.localfolder?.startsWith(process.env.WATCH_DIRECTORY))
+            file.metadata.keyvalues?.localfolder)
             .map(file => ({
                 path: file.metadata.name,
                 hash: file.ipfs_pin_hash
             }));
     },
 
-    async uploadFile(filePath, content) {
+    async uploadFile(filePath, content, group) {
         console.log('Uploading file:', filePath);
+        const fileName = filePath.split(path.sep).pop();
         const formData = new FormData();
-        formData.append('file', new Blob([content]), filePath);
+        formData.append('file', new Blob([content]), fileName);
 
-        formData.append('pinataOptions', JSON.stringify({
-            cidVersion: 0,
-            groupId: process.env.WATCH_GROUP
-        }));
+
+
+
+        if (group) {
+            formData.append('pinataOptions', JSON.stringify({
+                cidVersion: 0,
+                groupId: group
+            }));
+        }
+
         formData.append('pinataMetadata', JSON.stringify({
-            name: filePath,
+            name: fileName,
             keyvalues: {
                 localfolder: process.env.WATCH_DIRECTORY,
+                localfile: filePath
 
             }
         }));
@@ -80,7 +100,14 @@ const remoteService = {
         });
 
         const data = await response.json();
+
+        if (data.error) {
+            console.error(data.error);
+            throw new Error(data.error.message);
+        }
+
         return { success: true, hash: data.IpfsHash };
+
     },
 
     async deleteFile(fileHash) {
@@ -103,6 +130,44 @@ const remoteService = {
         const textResult = await response.text();
 
         return { success: textResult === 'OK' };
+    },
+
+    async listRemoteGroups() {
+        const response = await fetchWithRetry('https://api.pinata.cloud/groups', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${process.env.PINATA_JWT}`
+            }
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            return { success: false, message: data.message };
+        }
+
+        const data = await response.json();
+        return { success: true, groups: data };
+    },
+
+    async addNewGroup(groupName) {
+        const response = await fetchWithRetry('https://api.pinata.cloud/groups', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.PINATA_JWT}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: groupName,
+            })
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            return { success: false, message: data.message };
+        }
+
+        const data = await response.json();
+        return { success: true, groupId: data.id };
     }
 };
 
@@ -121,8 +186,22 @@ class SyncManager {
 
     }
 
+    async getRemoteGroups() {
+        const groups = await remoteService.listRemoteGroups();
+        // create lookup of group name to group id
+        const groupLookup = [];
+        for (const group of groups.groups) {
+            groupLookup.push({ name: group.name, id: group.id });
+        }
+        return groupLookup;
+    }
+
+
+
+
     async getLocalFiles() {
         const files = [];
+
         const readDir = async (dir) => {
             const entries = await fs.readdir(dir, { withFileTypes: true });
             for (const entry of entries) {
@@ -139,10 +218,17 @@ class SyncManager {
         };
 
         await readDir(this.watchDir);
-        return files;
+        return files.filter(f => !f.path.endsWith('.meta'));
     }
 
+    async getLocalFolders() {
+        const files = await this.getLocalFiles();
+        return files.filter(f => f.path.includes(path.sep)).map(f => f.path.split(path.sep)[0]);
+    }
+
+
     async sync() {
+
         // Each file triggers a sync, so we need to check if it's already syncing
         if (this.isSyncing) {
             // quiet return
@@ -153,23 +239,49 @@ class SyncManager {
             this.isSyncing = true;
             console.log('Starting sync...');
 
+            const remoteGroups = await this.getRemoteGroups();
+            const localFolders = [...new Set(await this.getLocalFolders())];
+
+
             const [localFiles, remoteFiles] = await Promise.all([
                 this.getLocalFiles(),
-                remoteService.listFolder()
+                (await Promise.all(remoteGroups.map(group => remoteService.listFolder(group.id)))).flat()
             ]);
 
-            const localFileMap = new Map(localFiles.map(f => [f.path, f]));
-            const remoteFileMap = new Map(remoteFiles.map(f => [f.path, f]));
+
+
+
+
+            const localFileMap = new Map(localFiles.map(f => [f.hash, f]));
+            const remoteFileMap = new Map(remoteFiles.map(f => [f.hash, f]));
+            let skipped = 0;
 
             // Find files to upload (new or modified files)
-            for (const [filePath, localFile] of localFileMap) {
-                const remoteFile = remoteFileMap.get(filePath);
-                if (!remoteFile || remoteFile.hash !== localFile.hash) {
-                    const fullPath = `${this.watchDir}/${filePath}`;
+            for (const [fileHash, localFile] of localFileMap) {
+                const remoteFile = remoteFileMap.get(fileHash);
+
+                if (!remoteFile) {
+                    const fullPath = `${this.watchDir}/${localFile.path}`;
                     const content = await fs.readFile(fullPath);
-                    await remoteService.uploadFile(filePath, content);
+                    let group = remoteGroups.find(x => x.name === localFolders.find(f => localFile.path.startsWith(f)))?.id;
+                    if (!group) {
+                        group = (await remoteService.addNewGroup(localFolders.find(f => localFile.path.startsWith(f))))?.groupId;
+                    }
+
+                    if (!group) {
+                        throw new Error('Failed to add new group');
+                    }
+                    await remoteService.uploadFile(localFile.path, content, group);
+
+
+
+                } else {
+                    skipped++;
+
                 }
             }
+
+            console.log(`Skipped ${skipped} files`);
 
             // Find files to delete (files that exist remotely but not locally)
             for (const [filePath] of remoteFileMap) {
@@ -203,7 +315,7 @@ const syncManager = new SyncManager(watchDir);
 
 // Set up file watcher
 const watcher = chokidar.watch(watchDir, {
-    ignored: /(^|[\/\\])\../, // ignore hidden files
+    ignored: /(^|[\/\\])\..*|\.meta$/, // ignore hidden files and files ending in .meta
     persistent: true
 });
 
